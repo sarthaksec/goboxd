@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.25
 ARG DEBIAN_VERSION=bookworm
 ARG NSJAIL_VERSION=3.4
 
@@ -15,25 +15,30 @@ RUN git clone --depth 1 --branch ${NSJAIL_VERSION} https://github.com/google/nsj
     && make -C /src/nsjail \
     && install -m 0755 /src/nsjail/nsjail /usr/local/bin/nsjail
 
-# ---- Builder / dev image (Go + linters + nsjail) ----
+# ---- Builder stage (Go + linters + nsjail) ----
 FROM golang:${GO_VERSION}-${DEBIAN_VERSION} AS builder
+ARG NSJAIL_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libnl-route-3-200 libprotobuf32 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
 RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/goboxd ./cmd/goboxd
 
-# ---- Runtime image ----
+# ---- Runtime stage (minimal production image) ----
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates libnl-route-3-200 libprotobuf32 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 1000 goboxd
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
-COPY --from=builder        /out/goboxd          /usr/local/bin/goboxd
+COPY --from=builder /out/goboxd /usr/local/bin/goboxd
+USER goboxd
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/goboxd -health-check || exit 1
 ENTRYPOINT ["/usr/local/bin/goboxd"]
