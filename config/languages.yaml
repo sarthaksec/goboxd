@@ -1,4 +1,4 @@
-languages:
+﻿languages:
   - id: py3
     name: Python 3
     source_filename: solution.py
@@ -9,3 +9,22 @@ languages:
         wall_time_s: 9
         memory_kb: 102400
         max_processes: 100
+
+  - id: cpp
+    name: C++
+    source_filename: solution.cpp
+    artifact: solution
+    build:
+      cmd: /usr/bin/g++
+      args: ["{{flags}}", "-o", "/solution", "/solution.cpp"]
+      limits:
+        wall_time_s: 3
+        memory_kb: 1048576
+        max_processes: 100
+      flag_allowlist: ["-O0","-O1","-O2","-O3","-Wall","-Wextra","-std=*"]
+    run:
+      cmd: /solution
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
