@@ -33,11 +33,14 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/goboxd ./cmd/gobox
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates libnl-route-3-200 libprotobuf32 \
+        python3 g++ \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 goboxd
 COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
 COPY --from=builder /out/goboxd /usr/local/bin/goboxd
-USER goboxd
+COPY config/ /config/
+# Run as root so nsjail can use privileged namespace mounts
+# USER goboxd
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD /usr/local/bin/goboxd -health-check || exit 1
