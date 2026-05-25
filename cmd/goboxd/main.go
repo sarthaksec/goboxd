@@ -271,6 +271,14 @@ func main() {
 		log.Fatalf("Failed to initialize language config registry: %v", err)
 	}
 
+	// Start single background cleanup ticker
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		for range ticker.C {
+			sandbox.SweepOrphanJails()
+		}
+	}()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthz)
 	mux.HandleFunc("/readyz", readyz)

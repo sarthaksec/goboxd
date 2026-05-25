@@ -84,9 +84,11 @@ func SweepOrphanJails() {
 	}
 }
 
+var executionSemaphore = make(chan struct{}, 16)
+
 func Execute(lang *config.LanguageConfig, req *types.RunRequest) (*types.RunResponse, error) {
-	
-	go SweepOrphanJails()
+	executionSemaphore <- struct{}{}
+	defer func() { <-executionSemaphore }()
 
 	jailDir, err := os.MkdirTemp("", "goboxd-jail-*")
 	if err != nil {

@@ -1,0 +1,10 @@
+{
+  "language": "cpp",
+  "source": "#include <iostream>\nint main() {\n    int x;\n    if (std::cin >> x) {\n        std::cout << x * 2 << \"\\n\";\n    }\n    return 0;\n}\n",
+  "tests": [
+    {
+      "stdin": "21\n",
+      "expected_stdout": "42\n"
+    }
+  ]
+}
